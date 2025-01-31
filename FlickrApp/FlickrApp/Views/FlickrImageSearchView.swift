@@ -10,24 +10,43 @@ import SwiftUI
 struct FlickrImageSearchView: View {
     @State private var searchString = ""
     @State private var flickrSearch = FlickrSearch(items: [])
+    @State private var isSearching: Bool = false
     
     var body: some View {
         NavigationStack {
             
-            FlickrItemsGridView(search: flickrSearch)
-                .navigationTitle("Search Flickr")
-//                .navigationDestination(for: Image.self, destination: { image in
-//                    image
-//                })
-                .searchable(text: $searchString)
-                .task {
-                    guard let flickrSearch = await FlickrImageFetcher().searchImages(searchTerm: searchString) else {
-                        print("search returned nil")
-                        return
-                    }
-                    
-                    self.flickrSearch = flickrSearch
+            ZStack {
+                ScrollView {
+                    FlickrItemsGridView(search: flickrSearch)
+                        .padding()
                 }
+                if isSearching {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                        .scaleEffect(3.0, anchor: .center)
+                        .background(Color.clear.blur(radius: 10))
+                }
+            }
+        }
+        .searchable(text: $searchString)
+        .onSubmit(of: .search, searchFlickr)
+        .onChange(of: searchString, initial: true) {
+            searchFlickr()
+        }
+    }
+    
+    func searchFlickr() {
+        isSearching = true
+        Task {
+            defer {
+                isSearching = false
+            }
+            guard let flickrSearch = await FlickrImageFetcher().searchImages(searchTerm: searchString) else {
+                print("search returned nil")
+                return
+            }
+            
+            self.flickrSearch = flickrSearch
         }
     }
 }
